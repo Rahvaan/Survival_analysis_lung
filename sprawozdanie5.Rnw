@@ -1,0 +1,161 @@
+\documentclass[12pt, a4paper]{article}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % dodatkowe pakiety LaTeX'a
+\usepackage[OT4]{polski}
+\usepackage[utf8]{inputenc}
+\usepackage[top=2.5cm, bottom=2.5cm, left=2cm, right=2cm]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage[colorlinks=true, linkcolor=blue]{hyperref}
+\usepackage{mathtools}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% ustawienia globalne
+<<ustawienia_globalne, echo=FALSE, warning=FALSE>>=
+library(knitr)
+library(xtable) #pakiet do tworzenia tabel w formacie LaTeX'a
+opts_chunk$set(fig.path='figure/', fig.align='center', fig.pos='H',fig.width=5, fig.height=4)
+# UWAGA: w razie potrzeby można zmieniać te ustawienia w danym chunk'u!
+@
+  
+  
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  % strona tytulowa
+\title{Sprawozdanie 5}
+\author{Maciej Łosiewicz \\ album 256319}
+\maketitle
+
+<<wstep, echo=FALSE, eval=TRUE, error=FALSE, warning=FALSE, results='hide', message=FALSE>>=
+## miejsce na biblioteki
+library(survival)
+library(timereg)
+library(MASS)
+library(stats)
+library(ggplot2)
+library(survminer)
+@
+\section{Zadanie  1}
+
+W tym zadaniu zweryfikujemy hipotezę istotności (a właściwie nieistotności) zmiennej $meal.cal$
+w przyjętym modelu.
+
+<<echo=TRUE, eval=TRUE, warning=FALSE, message=FALSE>>=
+
+df <- lung
+df["status"][df["status"] == 1] <- 0
+df["status"][df["status"] == 2] <- 1
+df <- na.omit(df)
+attach(df)
+
+
+fit <- coxph(Surv(time, status) ~ age + sex + ph.ecog + 
+               ph.karno + pat.karno + meal.cal + wt.loss, data = df)
+
+summary(fit)
+@
+
+Wartość $p.value$ dla zmiennej $meal.cal$ wynosi 0.91, co mocno wskazuje na $H_0$.
+\section{Zadanie 2}
+
+Tak samo jak poprzednie zadanie, tylko w tym wypadku będziemy badać zmienną $pat.karno$
+
+<<echo=TRUE, eval=TRUE, warning=FALSE, message=FALSE>>=
+summary(fit)
+@
+
+Wartość $p.value$ dla zmiennej $pat.karno$ wynosi 0.13, co mocno wskazuje na $H_0$.
+
+\section{Zadanie 3}
+
+Korzystając z funkcji step dokonamy wyboru zmiennych do modelu Coxa korzystając z (a) kryterium
+informacyjnego Akaike’a (AIC), oraz (b) kryterium BIC.
+
+AIC: 
+
+<<echo=TRUE, eval=TRUE, warning=FALSE, message=FALSE>>=
+
+AIC <- step(fit, k = 2, scope = list(upper = ~., lower = ~1))
+
+@
+
+BIC: 
+
+<<echo=TRUE, eval=TRUE, warning=FALSE, message=FALSE>>=
+
+BIC <- step(fit, k = log(length(df[,1])), scope = list(upper = ~., lower = ~1))
+
+@
+
+\section{Zadanie 4}
+
+Naszkicujemy wykres funkcji hazardu i funkcji przeżycia odpowiadające jednostce o wybranych charakterystykach na podstawie modelu wybranego w poprzednim punkcie przy kryterium AIC.
+
+
+Funkcja hazardu:
+
+<<echo=TRUE, eval=TRUE, warning=FALSE, message=FALSE>>=
+
+ggsurvplot(survfit(AIC), data = df)
+
+@
+
+
+Funkcja przeżycia:
+
+<<echo=TRUE, eval=TRUE, warning=FALSE, message=FALSE>>=
+
+plot(basehaz(AIC, centered = T))
+
+@
+
+\section{Zadanie 5}
+
+Na koniec zweryfikujemy hipotezę o proporcjonalności hazardów. Zastanowimy się nad problemem “momentu”,
+w którym tą hipotezę powinniśmy weryfikować.
+<<echo=TRUE, eval=TRUE, warning=FALSE, message=FALSE>>=
+
+cox.zph(AIC)
+
+@
+
+
+
+\section{Zadanie 6}
+
+W tym zadaniu dopasujemy model proporcjonalności szans.
+
+<<echo=TRUE, eval=TRUE, warning=FALSE, message=FALSE>>=
+
+modelprop <- prop.odds(Event(time, status) ~ age + sex + ph.ecog + 
+                         ph.karno + pat.karno + meal.cal + wt.loss, data = df)
+modelprop$gamma
+
+@
+
+
+\section{Zadanie 7}
+
+Teraz powtórzymy zadanie 6, ale bez zmiennych $age$ oraz $meal.cal$
+
+<<echo=TRUE, eval=TRUE, warning=FALSE, message=FALSE>>=
+
+modelprop1 <- prop.odds(Event(time, status) ~ sex + ph.ecog + 
+                         ph.karno + pat.karno + wt.loss, data = df)
+modelprop1$gamma
+
+@
+
+\section{Zadanie 8 oraz 9}
+Teraz, zweryfikujemy hipotęzę o istotności zmiennej $meal.cal$ w przyjętym modelu.
+<<echo=TRUE, eval=TRUE, warning=FALSE, message=FALSE>>=
+modelprop
+@
+Wartość $p.value$ dla zmiennej $meal.cal$ wynosi 0.288, co mocno wskazuje na $H_0$.
+Wartość $p.value$ dla zmiennej $pat.karno$ wynosi 0.646, co także wskazuje na $H_0$
+
+
+\end{document}
